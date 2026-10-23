@@ -1,7 +1,7 @@
 {
   "name": "claude-session-viewer",
   "displayName": "Claude Session Viewer",
-  "description": "Read-only browser for Claude Code session transcripts across every project and worktree.",
+  "description": "Browse Claude Code session transcripts across every project and worktree, and delete the ones you no longer need.",
   "version": "0.1.0",
   "publisher": "vincemansel",
   "license": "MIT",
@@ -44,7 +44,11 @@
       { "command": "claudeSessions.openRaw", "title": "Open Raw JSONL", "category": "Claude Sessions" },
       { "command": "claudeSessions.reveal", "title": "Reveal Transcript File", "category": "Claude Sessions" },
       { "command": "claudeSessions.archive", "title": "Archive", "category": "Claude Sessions" },
-      { "command": "claudeSessions.unarchive", "title": "Unarchive", "category": "Claude Sessions" }
+      { "command": "claudeSessions.unarchive", "title": "Unarchive", "category": "Claude Sessions" },
+      { "command": "claudeSessions.delete", "title": "Delete…", "category": "Claude Sessions" }
+    ],
+    "keybindings": [
+      { "command": "claudeSessions.delete", "key": "delete", "mac": "cmd+backspace", "when": "focusedView == claudeSessions.list" }
     ],
     "menus": {
       "view/title": [
@@ -62,7 +66,8 @@
         { "command": "claudeSessions.copyId", "when": "viewItem =~ /^session/", "group": "2_copy@1" },
         { "command": "claudeSessions.copyResume", "when": "viewItem =~ /^session/", "group": "2_copy@2" },
         { "command": "claudeSessions.archive", "when": "viewItem == session", "group": "3_archive@1" },
-        { "command": "claudeSessions.unarchive", "when": "viewItem == session-archived", "group": "3_archive@1" }
+        { "command": "claudeSessions.unarchive", "when": "viewItem == session-archived", "group": "3_archive@1" },
+        { "command": "claudeSessions.delete", "when": "viewItem =~ /^session/", "group": "4_delete@1" }
       ],
       "commandPalette": [
         { "command": "claudeSessions.open", "when": "false" },
@@ -71,7 +76,8 @@
         { "command": "claudeSessions.openRaw", "when": "false" },
         { "command": "claudeSessions.reveal", "when": "false" },
         { "command": "claudeSessions.archive", "when": "false" },
-        { "command": "claudeSessions.unarchive", "when": "false" }
+        { "command": "claudeSessions.unarchive", "when": "false" },
+        { "command": "claudeSessions.delete", "when": "false" }
       ]
     },
     "configuration": {

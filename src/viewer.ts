@@ -33,6 +33,11 @@ export class TranscriptPanels {
     await this.render(entry.id, false);
   }
 
+  /** Closes the tab for a session, if open. */
+  close(id: string): void {
+    this.panels.get(id)?.panel.dispose();
+  }
+
   /** Re-render open transcripts whose file changed. */
   async refresh(changedFiles: Set<string> | 'all', latest: Map<string, SessionEntry>): Promise<void> {
     for (const [id, p] of this.panels) {
