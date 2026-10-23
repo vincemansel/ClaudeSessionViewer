@@ -138,12 +138,29 @@ details { margin: 4px 0; }
 details > summary { cursor: pointer; color: var(--vscode-descriptionForeground); overflow-wrap: anywhere; }
 details.tool > summary .tool-name { font-family: var(--vscode-editor-font-family); color: var(--vscode-symbolIcon-functionForeground, var(--vscode-foreground)); }
 details.tool.error > summary .tool-name { color: var(--vscode-errorForeground); }
-details.thinking .text { color: var(--vscode-descriptionForeground); font-style: italic; }
+details.thinking .text, details.thinking .md { color: var(--vscode-descriptionForeground); font-style: italic; }
 details.subagent { border: 1px solid var(--vscode-panel-border); padding: 6px 10px; border-radius: 3px; }
 .label { font-size: 0.8em; color: var(--vscode-descriptionForeground); margin-top: 6px; }
 .system { color: var(--vscode-descriptionForeground); font-size: 0.85em; text-align: center; margin: 10px 0; border-top: 1px dashed var(--vscode-panel-border); padding-top: 6px; }
 .muted, .trunc { color: var(--vscode-descriptionForeground); }
 .trunc { display: block; font-style: italic; }
 .error { color: var(--vscode-errorForeground); }
+.md { overflow-wrap: anywhere; margin: 4px 0; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md blockquote, .md .table-wrap { margin: 6px 0; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { margin: 14px 0 6px; line-height: 1.25; font-weight: 600; }
+.md h1 { font-size: 1.35em; } .md h2 { font-size: 1.2em; } .md h3 { font-size: 1.08em; } .md h4, .md h5, .md h6 { font-size: 1em; }
+.md ul, .md ol { padding-left: 1.6em; }
+.md li { margin: 2px 0; }
+.md li > p { margin: 2px 0; }
+.md :not(pre) > code { background: var(--vscode-textCodeBlock-background); padding: 1px 4px; border-radius: 3px; font-size: 0.92em; }
+.md blockquote { border-left: 3px solid var(--vscode-textBlockQuote-border, var(--vscode-panel-border)); padding: 2px 10px; color: var(--vscode-descriptionForeground); }
+.md hr { border: none; border-top: 1px solid var(--vscode-panel-border); margin: 12px 0; }
+.md a { color: var(--vscode-textLink-foreground); }
+.md .table-wrap { overflow-x: auto; }
+.md table { border-collapse: collapse; font-size: 0.95em; }
+.md th, .md td { border: 1px solid var(--vscode-panel-border); padding: 4px 10px; text-align: left; vertical-align: top; overflow-wrap: normal; }
+.md th { background: var(--vscode-textCodeBlock-background); font-weight: 600; }
 body.hide-tools details.tool, body.hide-thinking details.thinking { display: none; }
 `;

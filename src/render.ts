@@ -1,6 +1,7 @@
 // Turns transcript messages into the webview's HTML body. Pure functions, no vscode
 // import, so the tests can run them under plain node.
 import type { SessionMessage } from '@anthropic-ai/claude-agent-sdk';
+import MarkdownIt from 'markdown-it';
 import type { SessionEntry, Transcript } from './sessions';
 
 export interface RenderOptions {
@@ -10,6 +11,28 @@ export interface RenderOptions {
 }
 
 const DEFAULT_MAX = 20_000;
+
+// Raw HTML in a transcript is shown as text, never parsed. Images would only hit the CSP,
+// so they render as their alt text. markdown-it already refuses javascript: and similar links.
+const md = new MarkdownIt({ html: false, linkify: true, breaks: false }).disable('image');
+md.renderer.rules.fence = (tokens, idx) => {
+  const t = tokens[idx];
+  const lang = t.info.trim().split(/\s+/)[0];
+  return `<pre class="code"${lang ? ` data-lang="${escapeHtml(lang)}"` : ''}><code>${escapeHtml(t.content.replace(/\n$/, ''))}</code></pre>\n`;
+};
+md.renderer.rules.table_open = () => '<div class="table-wrap"><table>\n';
+md.renderer.rules.table_close = () => '</table></div>\n';
+const defaultLinkOpen = md.renderer.rules.link_open ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
+md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  const href = tokens[idx].attrGet('href') ?? '';
+  tokens[idx].attrSet('title', href);
+  return defaultLinkOpen(tokens, idx, options, env, self);
+};
+
+/** Claude's replies are Markdown: headings, lists, tables, emphasis, code. */
+export function renderMarkdown(text: string): string {
+  return `<div class="md">${md.render(text)}</div>`;
+}
 
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -95,11 +118,13 @@ function renderMessages(messages: SessionMessage[], opts: RenderOptions): string
     for (const b of contentBlocks(m)) {
       switch (b?.type) {
         case 'text':
-          if (typeof b.text === 'string' && b.text.trim()) out.push(renderText(b.text));
+          // Prompts stay as typed (pasted logs are not Markdown); replies render as Markdown.
+          if (typeof b.text === 'string' && b.text.trim()) out.push(role === 'assistant' ? renderMarkdown(b.text) : renderText(b.text));
           break;
         case 'thinking':
           if (typeof b.thinking === 'string' && b.thinking.trim()) {
-            out.push(`<details class="thinking"${opts.showThinking ? ' open' : ''}><summary>Thinking</summary><div class="text">${truncate(b.thinking, max)}</div></details>`);
+            const thinking = b.thinking.length > max ? `<div class="text">${truncate(b.thinking, max)}</div>` : renderMarkdown(b.thinking);
+            out.push(`<details class="thinking"${opts.showThinking ? ' open' : ''}><summary>Thinking</summary>${thinking}</details>`);
           }
           break;
         case 'redacted_thinking':

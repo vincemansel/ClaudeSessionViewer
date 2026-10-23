@@ -125,9 +125,11 @@
     "package": "node esbuild.mjs && vsce package --no-dependencies"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.309"
+    "@anthropic-ai/claude-agent-sdk": "^0.3.309",
+    "markdown-it": "^14.1.0"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.0.0",
