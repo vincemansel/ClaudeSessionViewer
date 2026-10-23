@@ -34,6 +34,7 @@
     "commands": [
       { "command": "claudeSessions.refresh", "title": "Refresh", "icon": "$(refresh)", "category": "Claude Sessions" },
       { "command": "claudeSessions.quickOpen", "title": "Find Session…", "icon": "$(search)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.searchContent", "title": "Search Transcripts…", "icon": "$(search-fuzzy)", "category": "Claude Sessions" },
       { "command": "claudeSessions.filter", "title": "Filter Sessions…", "icon": "$(filter)", "category": "Claude Sessions" },
       { "command": "claudeSessions.clearFilter", "title": "Clear Filter", "icon": "$(clear-all)", "category": "Claude Sessions" },
       { "command": "claudeSessions.toggleScope", "title": "Toggle All Projects / This Workspace", "icon": "$(folder-library)", "category": "Claude Sessions" },
@@ -53,6 +54,7 @@
     "menus": {
       "view/title": [
         { "command": "claudeSessions.quickOpen", "when": "view == claudeSessions.list", "group": "navigation@1" },
+        { "command": "claudeSessions.searchContent", "when": "view == claudeSessions.list", "group": "navigation@2" },
         { "command": "claudeSessions.filter", "when": "view == claudeSessions.list && !claudeSessions.filtered", "group": "navigation@2" },
         { "command": "claudeSessions.clearFilter", "when": "view == claudeSessions.list && claudeSessions.filtered", "group": "navigation@2" },
         { "command": "claudeSessions.refresh", "when": "view == claudeSessions.list", "group": "navigation@3" },

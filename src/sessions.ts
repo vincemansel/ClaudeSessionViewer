@@ -268,6 +268,77 @@ async function readRawMessages(entry: SessionEntry): Promise<SessionMessage[]> {
   return out;
 }
 
+export interface ContentMatch {
+  /** Case-insensitive occurrences of the query in what the transcript shows. */
+  hits: number;
+  /** A line of text around the first hit. */
+  snippet?: string;
+}
+
+// Keys whose values are ids, encodings or binary data, never text a reader sees.
+const NOT_TEXT = new Set(['type', 'id', 'tool_use_id', 'signature', 'source', 'data', 'media_type']);
+
+/** Searches the text a transcript shows (prompts, replies, thinking, tool inputs and
+ * results) in the session and its subagent transcripts. Reads the JSONL directly, so it
+ * is as free as viewing. */
+export async function searchSessionContent(entry: SessionEntry, query: string): Promise<ContentMatch> {
+  const q = query.toLowerCase();
+  const out: ContentMatch = { hits: 0 };
+  if (!q) return out;
+  // A query with characters JSON escapes can't be pre-checked against the raw line.
+  const rawCheck = !/["\\\u0000-\u001f]/.test(q);
+  const files = [entry.file];
+  const subDir = path.join(path.dirname(entry.file), entry.id, 'subagents');
+  try {
+    for (const name of await fs.readdir(subDir)) if (name.endsWith('.jsonl')) files.push(path.join(subDir, name));
+  } catch {
+    // No subagents.
+  }
+  for (const file of files) {
+    let text: string;
+    try {
+      text = await fs.readFile(file, 'utf8');
+    } catch {
+      continue;
+    }
+    for (const line of text.split('\n')) {
+      if (!line.trim() || (rawCheck && !line.toLowerCase().includes(q))) continue;
+      let obj: any;
+      try {
+        obj = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if ((obj.type !== 'user' && obj.type !== 'assistant') || !obj.message) continue;
+      const strings: string[] = [];
+      collectText(obj.message.content, strings);
+      for (const s of strings) {
+        const lower = s.toLowerCase();
+        for (let i = lower.indexOf(q); i >= 0; i = lower.indexOf(q, i + q.length)) {
+          if (out.hits++ === 0) out.snippet = snippetAt(s, i, q.length);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function collectText(v: unknown, out: string[]): void {
+  if (typeof v === 'string') out.push(v);
+  else if (Array.isArray(v)) for (const x of v) collectText(x, out);
+  else if (v && typeof v === 'object') {
+    // Only content blocks (objects with a type) carry ids and encodings; tool inputs keep every key.
+    const isBlock = typeof (v as any).type === 'string';
+    for (const [k, x] of Object.entries(v)) if (!(isBlock && NOT_TEXT.has(k))) collectText(x, out);
+  }
+}
+
+function snippetAt(s: string, i: number, len: number): string {
+  const start = Math.max(0, i - 40);
+  const end = Math.min(s.length, i + len + 60);
+  return (start > 0 ? '…' : '') + s.slice(start, end).replace(/\s+/g, ' ').trim() + (end < s.length ? '…' : '');
+}
+
 export async function setArchiveTag(entry: SessionEntry, archived: boolean, configDir?: string): Promise<void> {
   await withConfigDir(configDir, () => tagSession(entry.id, archived ? ARCHIVE_TAG : null, { dir: entry.cwd }));
 }
