@@ -1,6 +1,7 @@
 // Reads Claude Code session transcripts. Read-only: this module never calls query(),
-// so browsing sessions starts no model turn and costs nothing. The one write path,
-// setArchiveTag, is opt-in through the claudeSessions.archiveWritesTag setting.
+// so browsing sessions starts no model turn and costs nothing. The write paths are
+// setArchiveTag, opt-in through the claudeSessions.archiveWritesTag setting, and
+// deleteSessionFiles, which runs only after the user confirms a delete.
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -269,6 +270,28 @@ async function readRawMessages(entry: SessionEntry): Promise<SessionMessage[]> {
 
 export async function setArchiveTag(entry: SessionEntry, archived: boolean, configDir?: string): Promise<void> {
   await withConfigDir(configDir, () => tagSession(entry.id, archived ? ARCHIVE_TAG : null, { dir: entry.cwd }));
+}
+
+/** The files that make up a session on disk: the transcript and, when present, the
+ * sibling <id>/ folder holding subagent transcripts and tool results. The same set the
+ * SDK's deleteSession() removes, resolved from the known path instead of by cwd, so
+ * sessions found only by the scan can be deleted too. */
+export async function sessionPaths(entry: SessionEntry): Promise<string[]> {
+  const out = [entry.file];
+  const folder = path.join(path.dirname(entry.file), entry.id);
+  try {
+    if ((await fs.stat(folder)).isDirectory()) out.push(folder);
+  } catch {
+    // No subagents or tool results.
+  }
+  return out;
+}
+
+/** Permanently removes a session's files. Returns the paths removed. */
+export async function deleteSessionFiles(entry: SessionEntry): Promise<string[]> {
+  const paths = await sessionPaths(entry);
+  for (const p of paths) await fs.rm(p, { recursive: true, force: true });
+  return paths;
 }
 
 /** The SDK reads CLAUDE_CONFIG_DIR. Point it at the configured folder for one call. */

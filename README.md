@@ -1,6 +1,6 @@
 # Claude Session Viewer
 
-A read-only VS Code side panel for browsing Claude Code session transcripts. It lists every
+A VS Code side panel for browsing Claude Code session transcripts. It lists every
 session under `~/.claude/projects/`, across all project directories, so history from other
 worktrees and old checkouts is one click away, and opens any of them as a readable transcript.
 
@@ -27,6 +27,12 @@ never calls `query()`, so browsing costs nothing.
 - **Right-click a session** to open the raw JSONL, reveal it in Finder, copy the session ID,
   or copy a ready-to-paste `cd … && claude --resume <id>` command.
 - **Archive** hides a session from the list (toggle *Show or Hide Archived* to see it again).
+- **Delete** removes a session from disk: right-click → *Delete…*, or select one or more rows
+  and press `Delete` (`Cmd+Backspace` on macOS). A confirmation lists the files first: the
+  `<id>.jsonl` transcript and its `<id>/` folder of subagent transcripts and tool results.
+  Choose *Move to Trash* (recoverable) or *Delete Permanently*. It warns when a session was
+  written in the last two minutes, since it may still be running. Nothing outside those paths
+  is touched, and nothing is ever deleted without that confirmation.
 - **Scope**: all projects (default) or only this workspace and its git worktrees.
 
 The `memory/` folders next to transcripts are Claude's auto-memory, not sessions, and are not

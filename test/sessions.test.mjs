@@ -7,11 +7,12 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { loadSessions, loadTranscript } = require('../dist/test-lib/sessions.js');
+const { loadSessions, loadTranscript, sessionPaths, deleteSessionFiles } = require('../dist/test-lib/sessions.js');
 const { renderTranscript, renderMarkdown } = require('../dist/test-lib/render.js');
 
 const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
+const C = '33333333-3333-4333-8333-333333333333';
 let dir;
 
 function line(o) {
@@ -117,4 +118,28 @@ test('Markdown never passes raw HTML, scripts or javascript: links through', () 
   const html = renderMarkdown('<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n[click](javascript:alert(1)) ![pic](https://example.com/a.png)');
   assert.doesNotMatch(html, /<script|<img|href="javascript/);
   assert.match(html, /&lt;script&gt;/);
+});
+
+test('deletes a session transcript and its subagent folder, nothing else', async () => {
+  const p = path.join(dir, 'projects', '-work-gamma');
+  fs.mkdirSync(path.join(p, C, 'subagents'), { recursive: true });
+  fs.writeFileSync(path.join(p, `${C}.jsonl`), transcript(C, '/work/gamma', 'Throwaway session'));
+  fs.writeFileSync(path.join(p, C, 'subagents', 'agent-x.jsonl'), line({ type: 'user', message: { role: 'user', content: 'hi' } }));
+  fs.writeFileSync(path.join(p, 'keep.md'), 'not part of the session');
+
+  const c = (await loadSessions({ includeProgrammatic: true })).find((s) => s.id === C);
+  assert.ok(c);
+  assert.deepEqual(await sessionPaths(c), [path.join(p, `${C}.jsonl`), path.join(p, C)]);
+
+  await deleteSessionFiles(c);
+  assert.ok(!fs.existsSync(path.join(p, `${C}.jsonl`)));
+  assert.ok(!fs.existsSync(path.join(p, C)));
+  assert.ok(fs.existsSync(path.join(p, 'keep.md')));
+  const ids = (await loadSessions({ includeProgrammatic: true })).map((s) => s.id).sort();
+  assert.deepEqual(ids, [A, B]);
+});
+
+test('a session without a subagent folder is just its transcript', async () => {
+  const [a] = (await loadSessions({ includeProgrammatic: true })).filter((s) => s.id === A);
+  assert.deepEqual(await sessionPaths(a), [a.file]);
 });
