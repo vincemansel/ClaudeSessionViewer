@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ARCHIVE_TAG, loadSessions, projectsRoot, setArchiveTag, type SessionEntry } from './sessions';
+import { ARCHIVE_TAG, deleteSessionFiles, loadSessions, oneLine, projectsRoot, sessionPaths, setArchiveTag, type SessionEntry } from './sessions';
 import { relativeTime, SessionTree, type Node } from './tree';
 import { TranscriptPanels } from './viewer';
 
@@ -13,7 +13,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const archived = () => new Set(context.globalState.get<string[]>(ARCHIVED_KEY, []));
 
   const tree = new SessionTree(archived);
-  const view = vscode.window.createTreeView('claudeSessions.list', { treeDataProvider: tree, showCollapseAll: true });
+  const view = vscode.window.createTreeView('claudeSessions.list', { treeDataProvider: tree, showCollapseAll: true, canSelectMany: true });
   const panels = new TranscriptPanels(() => ({ configDir: configDir(), showThinking: cfg().get<boolean>('showThinking', false) }));
   context.subscriptions.push(view);
 
@@ -62,6 +62,66 @@ export function activate(context: vscode.ExtensionContext): void {
       return sel?.kind === 'session' ? sel.entry : undefined;
     }
     return 'kind' in arg ? (arg.kind === 'session' ? arg.entry : undefined) : arg;
+  };
+
+  /** The sessions a context-menu command applies to: every selected session when the
+   * clicked row is part of a multi-selection, otherwise the clicked one. */
+  const entriesOf = (arg?: Node | SessionEntry, all?: Node[]): SessionEntry[] => {
+    const nodes = all && all.length > 1 ? all : undefined;
+    if (nodes) return nodes.flatMap((n) => (n.kind === 'session' ? [n.entry] : []));
+    if (!arg) return view.selection.flatMap((n) => (n.kind === 'session' ? [n.entry] : []));
+    const e = entryOf(arg);
+    return e ? [e] : [];
+  };
+
+  const deleteSessions = async (entries: SessionEntry[]) => {
+    if (entries.length === 0) return;
+    const one = entries.length === 1;
+    const paths = (await Promise.all(entries.map(sessionPaths))).flat();
+    const recent = entries.filter((e) => Date.now() - e.lastModified < 2 * 60 * 1000);
+    const detail = [
+      one ? 'Removes these from disk:' : `Removes ${entries.length} sessions (${paths.length} files and folders) from disk:`,
+      ...paths.slice(0, 8),
+      ...(paths.length > 8 ? [`…and ${paths.length - 8} more`] : []),
+      '',
+      'A deleted session can no longer be resumed.',
+      ...(recent.length ? ['', `${one ? 'This session was' : `${recent.length} of these sessions were`} updated in the last two minutes and may still be running.`] : []),
+    ].join('\n');
+    const TRASH = 'Move to Trash';
+    const PERMANENT = 'Delete Permanently';
+    const choice = await vscode.window.showWarningMessage(
+      one ? `Delete “${oneLine(entries[0].title, 80)}”?` : `Delete ${entries.length} sessions?`,
+      { modal: true, detail },
+      TRASH,
+      PERMANENT,
+    );
+    if (!choice) return;
+
+    const failed: string[] = [];
+    for (const e of entries) {
+      try {
+        if (choice === TRASH) {
+          for (const p of await sessionPaths(e)) await vscode.workspace.fs.delete(vscode.Uri.file(p), { recursive: true, useTrash: true });
+        } else {
+          await deleteSessionFiles(e);
+        }
+        panels.close(e.id);
+      } catch (err) {
+        failed.push(`${oneLine(e.title, 60)}: ${String(err)}`);
+      }
+    }
+    const ids = archived();
+    const before = ids.size;
+    for (const e of entries) ids.delete(e.id);
+    if (ids.size !== before) await context.globalState.update(ARCHIVED_KEY, [...ids]);
+    await refresh();
+    if (failed.length) {
+      const hint = choice === TRASH ? ' If the trash is unavailable here, use Delete Permanently.' : '';
+      void vscode.window.showErrorMessage(`Could not delete ${failed.length} session${failed.length === 1 ? '' : 's'}. ${failed.join('; ')}${hint}`);
+    } else {
+      const n = entries.length;
+      void vscode.window.setStatusBarMessage(`${n} session${n === 1 ? '' : 's'} ${choice === TRASH ? 'moved to trash' : 'deleted'}`, 3000);
+    }
   };
 
   const setArchived = async (arg: Node | undefined, value: boolean) => {
@@ -147,6 +207,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   reg('claudeSessions.archive', (arg?: Node) => setArchived(arg, true));
   reg('claudeSessions.unarchive', (arg?: Node) => setArchived(arg, false));
+  reg('claudeSessions.delete', (arg?: Node, all?: Node[]) => deleteSessions(entriesOf(arg, all)));
 
   // Live updates: watch projects/ for transcript changes, debounced.
   let watcher: fs.FSWatcher | undefined;
