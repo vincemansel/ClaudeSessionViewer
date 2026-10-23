@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { renderTranscript } from './render';
+import { escapeHtml, renderTranscript } from './render';
 import { loadTranscript, type SessionEntry } from './sessions';
 
 interface Settings {
@@ -9,25 +9,29 @@ interface Settings {
 
 /** One webview tab per session. Opening a session that is already open reveals it. */
 export class TranscriptPanels {
-  private readonly panels = new Map<string, { panel: vscode.WebviewPanel; entry: SessionEntry }>();
+  private readonly panels = new Map<string, { panel: vscode.WebviewPanel; entry: SessionEntry; search?: string }>();
 
   constructor(private readonly settings: () => Settings) {}
 
-  async open(entry: SessionEntry): Promise<void> {
+  /** Opens a session's tab. With `search`, the tab's search box starts with that text and
+   * jumps to its first hit in this transcript. */
+  async open(entry: SessionEntry, search?: string): Promise<void> {
     const existing = this.panels.get(entry.id);
     if (existing) {
       existing.entry = entry;
       existing.panel.reveal();
+      if (search) void existing.panel.webview.postMessage({ type: 'search', query: search });
       return;
     }
     const panel = vscode.window.createWebviewPanel('claudeSessions.transcript', shortTitle(entry.title), vscode.ViewColumn.Active, {
       enableScripts: true,
-      enableFindWidget: true,
+      // The page has its own search box, which also takes Cmd/Ctrl+F.
+      enableFindWidget: false,
       retainContextWhenHidden: true,
       localResourceRoots: [],
     });
     panel.iconPath = new vscode.ThemeIcon('comment-discussion');
-    this.panels.set(entry.id, { panel, entry });
+    this.panels.set(entry.id, { panel, entry, search });
     panel.onDidDispose(() => this.panels.delete(entry.id));
     panel.webview.html = shell(panel.webview, '<p class="muted">Loading…</p>');
     await this.render(entry.id, false);
@@ -62,7 +66,7 @@ export class TranscriptPanels {
     p.panel.title = shortTitle(p.entry.title);
     // The first render replaces the page; later ones post to it so scroll survives.
     if (isUpdate) void p.panel.webview.postMessage({ type: 'render', html, isUpdate });
-    else p.panel.webview.html = shell(p.panel.webview, html);
+    else p.panel.webview.html = shell(p.panel.webview, html, p.search);
   }
 }
 
@@ -79,7 +83,7 @@ function nonce(): string {
 }
 
 /** The page frame. Live updates arrive by postMessage so they keep the scroll position. */
-export function shell(webview: { cspSource: string }, initial: string): string {
+export function shell(webview: { cspSource: string }, initial: string, search = ''): string {
   const n = nonce();
   return `<!DOCTYPE html>
 <html lang="en">
@@ -96,6 +100,12 @@ export function shell(webview: { cspSource: string }, initial: string): string {
   <button id="expand">Expand all</button>
   <button id="collapse">Collapse all</button>
   <button id="bottom">Jump to end</button>
+  <span class="search">
+    <input id="q" type="search" placeholder="Search this transcript" value="${escapeHtml(search)}" spellcheck="false">
+    <span id="count" class="muted"></span>
+    <button id="prev" title="Previous match (Shift+Enter)">↑</button>
+    <button id="next" title="Next match (Enter)">↓</button>
+  </span>
 </nav>
 <div id="root">${initial}</div>
 <script nonce="${n}">
@@ -103,15 +113,112 @@ const root = document.getElementById('root');
 const toggle = (id, cls) => document.getElementById(id).addEventListener('change', e => document.body.classList.toggle(cls, !e.target.checked));
 toggle('tools', 'hide-tools');
 toggle('thinking', 'hide-thinking');
+
+// Search within this transcript only: wrap each hit in <mark>, skip hits hidden by the
+// toolbar toggles, and open the collapsed sections around the current one.
+const q = document.getElementById('q');
+const count = document.getElementById('count');
+let marks = [];
+let cur = -1;
+const hidden = m =>
+  (document.body.classList.contains('hide-tools') && m.closest('details.tool')) ||
+  (document.body.classList.contains('hide-thinking') && m.closest('details.thinking'));
+function clearMarks() {
+  for (const m of root.querySelectorAll('mark.hit')) {
+    const parent = m.parentNode;
+    parent.replaceChild(document.createTextNode(m.textContent), m);
+    parent.normalize();
+  }
+  marks = [];
+  cur = -1;
+}
+function search(keep) {
+  const prev = cur;
+  clearMarks();
+  const term = q.value.toLowerCase();
+  if (term) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const text = node.nodeValue;
+      const lower = text.toLowerCase();
+      let i = lower.indexOf(term);
+      if (i < 0 || lower.length !== text.length) continue;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      for (; i >= 0; i = lower.indexOf(term, last)) {
+        frag.append(text.slice(last, i));
+        const m = document.createElement('mark');
+        m.className = 'hit';
+        m.textContent = text.slice(i, i + term.length);
+        frag.append(m);
+        last = i + term.length;
+      }
+      frag.append(text.slice(last));
+      node.parentNode.replaceChild(frag, node);
+    }
+    marks = [...root.querySelectorAll('mark.hit')].filter(m => !hidden(m));
+  }
+  if (marks.length) go(keep && prev >= 0 ? Math.min(prev, marks.length - 1) : 0, !keep);
+  else count.textContent = term ? 'No matches' : '';
+}
+function go(i, scroll = true) {
+  if (!marks.length) return;
+  marks[cur]?.classList.remove('current');
+  cur = (i + marks.length) % marks.length;
+  const m = marks[cur];
+  m.classList.add('current');
+  count.textContent = (cur + 1) + ' of ' + marks.length;
+  if (!scroll) return;
+  // Open every collapsed section around the hit; a hit in a summary needs only its parents.
+  let d = m.closest('details');
+  if (d && m.closest('summary')?.parentElement === d) d = d.parentElement.closest('details');
+  for (; d; d = d.parentElement.closest('details')) d.open = true;
+  m.scrollIntoView({ block: 'center' });
+}
+let typing;
+q.addEventListener('input', () => {
+  clearTimeout(typing);
+  typing = setTimeout(() => search(false), 150);
+});
+q.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    clearTimeout(typing);
+    if (!marks.length || !marks[0].isConnected) search(false);
+    else go(cur + (e.shiftKey ? -1 : 1));
+  } else if (e.key === 'Escape') {
+    q.value = '';
+    search(false);
+  }
+});
+document.getElementById('next').onclick = () => go(cur + 1);
+document.getElementById('prev').onclick = () => go(cur - 1);
+for (const id of ['tools', 'thinking']) document.getElementById(id).addEventListener('change', () => search(true));
+window.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'f') {
+    e.preventDefault();
+    q.focus();
+    q.select();
+  }
+});
+if (q.value) search(false);
 document.getElementById('expand').onclick = () => root.querySelectorAll('details').forEach(d => d.open = true);
 document.getElementById('collapse').onclick = () => root.querySelectorAll('details').forEach(d => d.open = false);
 document.getElementById('bottom').onclick = () => window.scrollTo(0, document.body.scrollHeight);
 window.addEventListener('message', e => {
   const m = e.data;
+  if (m.type === 'search') {
+    q.value = m.query;
+    search(false);
+    return;
+  }
   if (m.type !== 'render') return;
   const atBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 40;
   const y = window.scrollY;
   root.innerHTML = m.html;
+  if (q.value) search(true);
   if (m.isUpdate) window.scrollTo(0, atBottom ? document.body.scrollHeight : y);
 });
 </script>
@@ -162,5 +269,11 @@ details.subagent { border: 1px solid var(--vscode-panel-border); padding: 6px 10
 .md table { border-collapse: collapse; font-size: 0.95em; }
 .md th, .md td { border: 1px solid var(--vscode-panel-border); padding: 4px 10px; text-align: left; vertical-align: top; overflow-wrap: normal; }
 .md th { background: var(--vscode-textCodeBlock-background); font-weight: 600; }
+.toolbar .search { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+.toolbar input { background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border, transparent); padding: 3px 6px; border-radius: 2px; width: 200px; font: inherit; }
+.toolbar input:focus { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+#count { font-size: 0.9em; min-width: 5em; text-align: right; }
+mark.hit { background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)); color: inherit; border-radius: 2px; }
+mark.hit.current { background: var(--vscode-editor-findMatchBackground, rgba(255, 150, 50, 0.6)); outline: 1px solid var(--vscode-editor-findMatchBorder, transparent); }
 body.hide-tools details.tool, body.hide-thinking details.thinking { display: none; }
 `;

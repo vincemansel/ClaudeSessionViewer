@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ARCHIVE_TAG, oneLine, type SessionEntry } from './sessions';
+import { ARCHIVE_TAG, oneLine, type ContentMatch, type SessionEntry } from './sessions';
 
 export type Node = { kind: 'project'; key: string; label: string; sessions: SessionEntry[] } | { kind: 'session'; entry: SessionEntry };
 
@@ -32,6 +32,8 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
 
   sessions: SessionEntry[] = [];
   filter = '';
+  /** A search of transcript text: only sessions with a hit are shown. */
+  content?: { query: string; matches: Map<string, ContentMatch> };
   showArchived = false;
   error?: string;
 
@@ -42,7 +44,13 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
   }
 
   visible(): SessionEntry[] {
-    return this.sessions.filter((e) => (this.showArchived || !this.isArchived(e)) && matchesFilter(e, this.filter));
+    return this.sessions.filter(
+      (e) => (this.showArchived || !this.isArchived(e)) && matchesFilter(e, this.filter) && (!this.content || this.hits(e) > 0),
+    );
+  }
+
+  hits(e: SessionEntry): number {
+    return this.content?.matches.get(e.id)?.hits ?? 0;
   }
 
   set(sessions: SessionEntry[]): void {
@@ -85,11 +93,14 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
     const archived = this.isArchived(e);
     const item = new vscode.TreeItem(oneLine(e.title, 90), vscode.TreeItemCollapsibleState.None);
     item.id = `session:${e.id}`;
-    item.description = [e.gitBranch, relativeTime(e.lastModified)].filter(Boolean).join(' · ');
+    const hits = this.content ? this.hits(e) : 0;
+    item.description = [hits ? `${hits} match${hits === 1 ? '' : 'es'}` : '', e.gitBranch, relativeTime(e.lastModified)].filter(Boolean).join(' · ');
     item.iconPath = new vscode.ThemeIcon(archived ? 'archive' : 'comment-discussion');
     item.contextValue = archived ? 'session-archived' : 'session';
     const tip = new vscode.MarkdownString();
     tip.appendMarkdown(`**${escapeMd(oneLine(e.title, 200))}**\n\n`);
+    const snippet = this.content?.matches.get(e.id)?.snippet;
+    if (snippet) tip.appendMarkdown(`*Match:* ${escapeMd(snippet)}\n\n`);
     if (e.firstPrompt && e.firstPrompt !== e.title) tip.appendMarkdown(`${escapeMd(oneLine(e.firstPrompt, 300))}\n\n`);
     tip.appendMarkdown(`\`${e.id}\`\n\n`);
     if (e.cwd) tip.appendMarkdown(`${escapeMd(e.cwd)}\n\n`);

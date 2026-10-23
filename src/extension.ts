@@ -1,7 +1,18 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ARCHIVE_TAG, deleteSessionFiles, loadSessions, oneLine, projectsRoot, sessionPaths, setArchiveTag, type SessionEntry } from './sessions';
+import {
+  ARCHIVE_TAG,
+  deleteSessionFiles,
+  loadSessions,
+  oneLine,
+  projectsRoot,
+  searchSessionContent,
+  sessionPaths,
+  setArchiveTag,
+  type ContentMatch,
+  type SessionEntry,
+} from './sessions';
 import { relativeTime, SessionTree, type Node } from './tree';
 import { TranscriptPanels } from './viewer';
 
@@ -16,6 +27,24 @@ export function activate(context: vscode.ExtensionContext): void {
   const view = vscode.window.createTreeView('claudeSessions.list', { treeDataProvider: tree, showCollapseAll: true, canSelectMany: true });
   const panels = new TranscriptPanels(() => ({ configDir: configDir(), showThinking: cfg().get<boolean>('showThinking', false) }));
   context.subscriptions.push(view);
+
+  // Content search results by file, reused while a transcript's size and mtime are unchanged.
+  const searchCache = new Map<string, { query: string; version: string; match: ContentMatch }>();
+  const searchContent = async (query: string): Promise<Map<string, ContentMatch>> => {
+    const matches = new Map<string, ContentMatch>();
+    const queue = [...tree.sessions];
+    const worker = async () => {
+      for (let e = queue.shift(); e; e = queue.shift()) {
+        const version = `${e.lastModified}:${e.fileSize}`;
+        const hit = searchCache.get(e.file);
+        const match = hit && hit.query === query && hit.version === version ? hit.match : await searchSessionContent(e, query);
+        searchCache.set(e.file, { query, version, match });
+        matches.set(e.id, match);
+      }
+    };
+    await Promise.all(Array.from({ length: 8 }, worker));
+    return matches;
+  };
 
   let loading: Promise<void> | undefined;
   let again = false;
@@ -40,6 +69,12 @@ export function activate(context: vscode.ExtensionContext): void {
         } catch (err) {
           void vscode.window.showErrorMessage(`Claude Sessions: could not list sessions. ${String(err)}`);
         }
+        if (tree.content) {
+          const query = tree.content.query;
+          const matches = await searchContent(query);
+          if (tree.content?.query === query) tree.content = { query, matches };
+          tree.redraw();
+        }
         updateViewChrome();
       } while (again);
     })().finally(() => (loading = undefined));
@@ -50,10 +85,11 @@ export function activate(context: vscode.ExtensionContext): void {
     const scope = cfg().get<string>('scope', 'all');
     const parts = [scope === 'workspace' ? 'This workspace' : 'All projects'];
     if (tree.filter) parts.push(`filter “${tree.filter}”`);
+    if (tree.content) parts.push(`containing “${tree.content.query}”`);
     if (tree.showArchived) parts.push('with archived');
     view.description = parts.join(' · ');
     view.message = tree.sessions.length === 0 ? `No sessions found under ${projectsRoot(configDir())}.` : tree.visible().length === 0 ? 'No sessions match.' : undefined;
-    void vscode.commands.executeCommand('setContext', 'claudeSessions.filtered', !!tree.filter);
+    void vscode.commands.executeCommand('setContext', 'claudeSessions.filtered', !!tree.filter || !!tree.content);
   };
 
   const entryOf = (arg?: Node | SessionEntry): SessionEntry | undefined => {
@@ -148,7 +184,8 @@ export function activate(context: vscode.ExtensionContext): void {
   reg('claudeSessions.refresh', () => refresh());
   reg('claudeSessions.open', (arg?: Node | SessionEntry) => {
     const e = entryOf(arg);
-    if (e) return panels.open(e);
+    // Opened from a content search: search the transcript for the same text.
+    if (e) return panels.open(e, tree.content && tree.hits(e) > 0 ? tree.content.query : undefined);
   });
   reg('claudeSessions.quickOpen', async () => {
     if (tree.sessions.length === 0) await refresh();
@@ -172,7 +209,29 @@ export function activate(context: vscode.ExtensionContext): void {
     tree.redraw();
     updateViewChrome();
   });
+  reg('claudeSessions.searchContent', async () => {
+    const value = await vscode.window.showInputBox({
+      prompt: 'Show sessions whose transcript contains this text (prompts, replies, thinking, tool calls)',
+      placeHolder: 'Text to find in every transcript',
+      value: tree.content?.query,
+    });
+    if (value === undefined) return;
+    const query = value.trim();
+    if (!query) {
+      tree.content = undefined;
+    } else {
+      if (tree.sessions.length === 0) await refresh();
+      const matches = await vscode.window.withProgress(
+        { location: { viewId: 'claudeSessions.list' }, title: `Searching transcripts for “${query}”` },
+        () => searchContent(query),
+      );
+      tree.content = { query, matches };
+    }
+    tree.redraw();
+    updateViewChrome();
+  });
   reg('claudeSessions.clearFilter', () => {
+    tree.content = undefined;
     tree.filter = '';
     tree.redraw();
     updateViewChrome();

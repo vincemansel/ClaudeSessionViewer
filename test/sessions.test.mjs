@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { loadSessions, loadTranscript, sessionPaths, deleteSessionFiles } = require('../dist/test-lib/sessions.js');
+const { loadSessions, loadTranscript, sessionPaths, deleteSessionFiles, searchSessionContent } = require('../dist/test-lib/sessions.js');
 const { renderTranscript, renderMarkdown } = require('../dist/test-lib/render.js');
 
 const A = '11111111-1111-4111-8111-111111111111';
@@ -142,4 +142,31 @@ test('deletes a session transcript and its subagent folder, nothing else', async
 test('a session without a subagent folder is just its transcript', async () => {
   const [a] = (await loadSessions({ includeProgrammatic: true })).filter((s) => s.id === A);
   assert.deepEqual(await sessionPaths(a), [a.file]);
+});
+
+test('searches transcript text, not ids or JSON keys', async () => {
+  const all = await loadSessions({ includeProgrammatic: true });
+  const a = all.find((s) => s.id === A);
+  const b = all.find((s) => s.id === B);
+  // Prompt, thinking, tool input and tool result all count; case does not matter.
+  assert.equal((await searchSessionContent(a, 'PARSER')).hits, 1);
+  assert.equal((await searchSessionContent(a, 'carefully')).hits, 1);
+  assert.equal((await searchSessionContent(a, 'list files')).hits, 1);
+  assert.equal((await searchSessionContent(a, 'readme.md')).hits, 1);
+  assert.equal((await searchSessionContent(b, 'parser')).hits, 0);
+  assert.equal((await searchSessionContent(a, 'toolu_1')).hits, 0);
+  assert.equal((await searchSessionContent(a, 'tool_use')).hits, 0);
+  const m = await searchSessionContent(a, 'let x');
+  assert.equal(m.hits, 1);
+  assert.match(m.snippet, /let x = 1/);
+});
+
+test('searches subagent transcripts too', async () => {
+  const p = path.join(dir, 'projects', '-work-alpha');
+  fs.mkdirSync(path.join(p, A, 'subagents'), { recursive: true });
+  fs.writeFileSync(path.join(p, A, 'subagents', 'agent-y.jsonl'), line({ type: 'user', message: { role: 'user', content: 'Find the "quoted" parser bug' } }));
+  const a = (await loadSessions({ includeProgrammatic: true })).find((s) => s.id === A);
+  assert.equal((await searchSessionContent(a, 'parser')).hits, 2);
+  assert.equal((await searchSessionContent(a, '"quoted"')).hits, 1);
+  fs.rmSync(path.join(p, A), { recursive: true, force: true });
 });

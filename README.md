@@ -11,6 +11,17 @@ conversation, copy a resume command when I want to pick one up again, and delete
 I'm done with. It never calls the model, so browsing your history costs nothing. If you use
 Claude Code across several repos or worktrees, it works as is.
 
+## At a glance
+
+- Every session from every project and worktree, in one sidebar
+- Search inside all transcripts to find the sessions that mention something
+- Search within one open transcript, with matches highlighted
+- Readable transcripts with Markdown replies and collapsible tool calls
+- Live updates while a session is running
+- Copy a ready-to-paste resume command
+- Archive or delete sessions you're done with
+- Never calls the model, so browsing costs nothing
+
 ## Get started
 
 You need [Node.js](https://nodejs.org) 20 or newer, `git`, and VS Code with the `code`
@@ -51,12 +62,20 @@ never calls `query()`, so browsing costs nothing.
 - **Find Session…** (search icon, or `Claude Sessions: Find Session…` in the command palette):
   a quick pick over every session, matching title, project, branch and first prompt.
 - **Filter** the tree by words; every word must match.
+- **Search Transcripts…** (fuzzy search icon): finds text anywhere inside every session,
+  including prompts, replies, thinking, tool calls and their output, and subagent transcripts.
+  The list narrows to the sessions that contain it, each showing its number of matches, with
+  the first match in the tooltip. *Clear Filter* brings everything back.
+- **Search this transcript**: the box in a transcript's toolbar (or `Cmd+F` / `Ctrl+F`)
+  highlights matches in that session only. `Enter` and `Shift+Enter` step through them,
+  opening collapsed tool calls and thinking as needed; `Esc` clears. A session opened from
+  *Search Transcripts…* starts with the same text searched and jumps to its first match.
 - **Transcript tab**: your prompts and Claude's replies, with tool calls collapsed under their
   name and a one-line summary, each tool's result nested under its call, thinking collapsed,
   and subagent transcripts at the end. Claude's replies and thinking render as Markdown
   (tables, headings, lists, quotes, links, inline code and code blocks); your prompts and tool
   output stay as typed. Raw HTML in a transcript is always shown as text. Toggle tool calls and
-  thinking, expand or collapse everything, and use `Cmd+F` to search.
+  thinking, expand or collapse everything, and search the transcript (below).
 - **Live**: the list and open transcripts update as sessions are written, so a running
   session can be followed from another window.
 - **Right-click a session** to open the raw JSONL, reveal it in Finder, copy the session ID,
