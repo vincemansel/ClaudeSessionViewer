@@ -5,7 +5,7 @@
 Claude Code saves every session, but once a session ends it's hard to get back to.
 `claude --resume` only shows sessions for the folder you're in, so work from another
 worktree or an old checkout is effectively hidden. The raw JSONL is hard to read, and
-reopening a session just to look something up risks starting a new turn. I wanted one place
+reopening a session just to look something up risks starting a new turn which costs tokens. I wanted one place
 in VS Code to see all my sessions across every project: search them, read them like a
 conversation, copy a resume command when I want to pick one up again, and delete the ones
 I'm done with. It never calls the model, so browsing your history costs nothing. If you use
