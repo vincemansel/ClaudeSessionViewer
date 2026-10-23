@@ -1,5 +1,40 @@
 # Claude Session Viewer
 
+## Why I made this
+
+Claude Code saves every session, but once a session ends it's hard to get back to.
+`claude --resume` only shows sessions for the folder you're in, so work from another
+worktree or an old checkout is effectively hidden. The raw JSONL is hard to read, and
+reopening a session just to look something up risks starting a new turn. I wanted one place
+in VS Code to see all my sessions across every project: search them, read them like a
+conversation, copy a resume command when I want to pick one up again, and delete the ones
+I'm done with. It never calls the model, so browsing your history costs nothing. If you use
+Claude Code across several repos or worktrees, it works as is.
+
+## Get started
+
+You need [Node.js](https://nodejs.org) 20 or newer, `git`, and VS Code with the `code`
+command on your PATH. On macOS, run **Shell Command: Install 'code' command in PATH** from
+the VS Code command palette if `code` isn't found.
+
+```bash
+git clone https://github.com/vincemansel/ClaudeSessionViewer.git
+cd ClaudeSessionViewer
+npm install
+npm run package                                      # builds claude-session-viewer-<version>.vsix
+code --install-extension claude-session-viewer-*.vsix
+```
+
+Then, in VS Code, open the command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and run
+**Developer: Reload Window**. Click the **Claude Sessions** icon in the activity bar to see
+your sessions. They're read from `~/.claude/projects/`. If yours are somewhere else, set
+`claudeSessions.configDir`.
+
+To update later, run `git pull`, then repeat `npm install`, `npm run package`, the
+`code --install-extension` line with `--force` added, and reload the window.
+
+## Overview
+
 A VS Code side panel for browsing Claude Code session transcripts. It lists every
 session under `~/.claude/projects/`, across all project directories, so history from other
 worktrees and old checkouts is one click away, and opens any of them as a readable transcript.
@@ -49,7 +84,7 @@ listed.
 | `claudeSessions.liveUpdate` | `true` | Watch the projects folder and refresh on change. |
 | `claudeSessions.configDir` | empty | Claude config directory; empty uses `$CLAUDE_CONFIG_DIR`, then `~/.claude`. |
 
-## Install
+## Build and install manually
 
 ```bash
 npm install
