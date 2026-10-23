@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { loadSessions, loadTranscript } = require('../dist/test-lib/sessions.js');
-const { renderTranscript } = require('../dist/test-lib/render.js');
+const { renderTranscript, renderMarkdown } = require('../dist/test-lib/render.js');
 
 const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
@@ -81,4 +81,40 @@ test('truncates very large blocks', async () => {
   const t = await loadTranscript(a);
   const html = renderTranscript(a, t, { showThinking: true, maxBlockChars: 5 });
   assert.match(html, /more characters/);
+});
+
+test('renders replies as Markdown: tables, headings, lists, inline code', () => {
+  const html = renderMarkdown([
+    '## Results',
+    '',
+    '| Name | Count |',
+    '|:-----|------:|',
+    '| `a.ts` | **3** |',
+    '',
+    '- one',
+    '- two',
+    '',
+    '1. first',
+    '',
+    '> quoted',
+    '',
+    '```ts',
+    'const x = 1 < 2;',
+    '```',
+  ].join('\n'));
+  assert.match(html, /<h2>Results<\/h2>/);
+  assert.match(html, /<div class="table-wrap"><table>/);
+  assert.match(html, /<th style="text-align:left">Name<\/th>/);
+  assert.match(html, /<td style="text-align:right"><strong>3<\/strong><\/td>/);
+  assert.match(html, /<td style="text-align:left"><code>a\.ts<\/code><\/td>/);
+  assert.match(html, /<ul>\s*<li>one<\/li>/);
+  assert.match(html, /<ol>\s*<li>first<\/li>/);
+  assert.match(html, /<blockquote>/);
+  assert.match(html, /<pre class="code" data-lang="ts"><code>const x = 1 &lt; 2;<\/code><\/pre>/);
+});
+
+test('Markdown never passes raw HTML, scripts or javascript: links through', () => {
+  const html = renderMarkdown('<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n[click](javascript:alert(1)) ![pic](https://example.com/a.png)');
+  assert.doesNotMatch(html, /<script|<img|href="javascript/);
+  assert.match(html, /&lt;script&gt;/);
 });

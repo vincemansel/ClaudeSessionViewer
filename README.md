@@ -18,7 +18,9 @@ never calls `query()`, so browsing costs nothing.
 - **Filter** the tree by words; every word must match.
 - **Transcript tab**: your prompts and Claude's replies, with tool calls collapsed under their
   name and a one-line summary, each tool's result nested under its call, thinking collapsed,
-  code fences as code blocks, and subagent transcripts at the end. Toggle tool calls and
+  and subagent transcripts at the end. Claude's replies and thinking render as Markdown
+  (tables, headings, lists, quotes, links, inline code and code blocks); your prompts and tool
+  output stay as typed. Raw HTML in a transcript is always shown as text. Toggle tool calls and
   thinking, expand or collapse everything, and use `Cmd+F` to search.
 - **Live**: the list and open transcripts update as sessions are written, so a running
   session can be followed from another window.
