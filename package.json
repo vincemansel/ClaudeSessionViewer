@@ -1,0 +1,131 @@
+{
+  "name": "claude-session-viewer",
+  "displayName": "Claude Session Viewer",
+  "description": "Read-only browser for Claude Code session transcripts across every project and worktree.",
+  "version": "0.1.0",
+  "publisher": "vincemansel",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/vincemansel/ClaudeSessionViewer" },
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "claudeSessions",
+          "title": "Claude Sessions",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "claudeSessions": [
+        {
+          "id": "claudeSessions.list",
+          "name": "Sessions"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "claudeSessions.refresh", "title": "Refresh", "icon": "$(refresh)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.quickOpen", "title": "Find Session…", "icon": "$(search)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.filter", "title": "Filter Sessions…", "icon": "$(filter)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.clearFilter", "title": "Clear Filter", "icon": "$(clear-all)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.toggleScope", "title": "Toggle All Projects / This Workspace", "icon": "$(folder-library)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.toggleArchived", "title": "Show or Hide Archived", "icon": "$(archive)", "category": "Claude Sessions" },
+      { "command": "claudeSessions.open", "title": "Open Transcript", "category": "Claude Sessions" },
+      { "command": "claudeSessions.copyId", "title": "Copy Session ID", "category": "Claude Sessions" },
+      { "command": "claudeSessions.copyResume", "title": "Copy Resume Command", "category": "Claude Sessions" },
+      { "command": "claudeSessions.openRaw", "title": "Open Raw JSONL", "category": "Claude Sessions" },
+      { "command": "claudeSessions.reveal", "title": "Reveal Transcript File", "category": "Claude Sessions" },
+      { "command": "claudeSessions.archive", "title": "Archive", "category": "Claude Sessions" },
+      { "command": "claudeSessions.unarchive", "title": "Unarchive", "category": "Claude Sessions" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "claudeSessions.quickOpen", "when": "view == claudeSessions.list", "group": "navigation@1" },
+        { "command": "claudeSessions.filter", "when": "view == claudeSessions.list && !claudeSessions.filtered", "group": "navigation@2" },
+        { "command": "claudeSessions.clearFilter", "when": "view == claudeSessions.list && claudeSessions.filtered", "group": "navigation@2" },
+        { "command": "claudeSessions.refresh", "when": "view == claudeSessions.list", "group": "navigation@3" },
+        { "command": "claudeSessions.toggleScope", "when": "view == claudeSessions.list", "group": "1_view@1" },
+        { "command": "claudeSessions.toggleArchived", "when": "view == claudeSessions.list", "group": "1_view@2" }
+      ],
+      "view/item/context": [
+        { "command": "claudeSessions.open", "when": "viewItem =~ /^session/", "group": "1_open@1" },
+        { "command": "claudeSessions.openRaw", "when": "viewItem =~ /^session/", "group": "1_open@2" },
+        { "command": "claudeSessions.reveal", "when": "viewItem =~ /^session/", "group": "1_open@3" },
+        { "command": "claudeSessions.copyId", "when": "viewItem =~ /^session/", "group": "2_copy@1" },
+        { "command": "claudeSessions.copyResume", "when": "viewItem =~ /^session/", "group": "2_copy@2" },
+        { "command": "claudeSessions.archive", "when": "viewItem == session", "group": "3_archive@1" },
+        { "command": "claudeSessions.unarchive", "when": "viewItem == session-archived", "group": "3_archive@1" }
+      ],
+      "commandPalette": [
+        { "command": "claudeSessions.open", "when": "false" },
+        { "command": "claudeSessions.copyId", "when": "false" },
+        { "command": "claudeSessions.copyResume", "when": "false" },
+        { "command": "claudeSessions.openRaw", "when": "false" },
+        { "command": "claudeSessions.reveal", "when": "false" },
+        { "command": "claudeSessions.archive", "when": "false" },
+        { "command": "claudeSessions.unarchive", "when": "false" }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Session Viewer",
+      "properties": {
+        "claudeSessions.scope": {
+          "type": "string",
+          "enum": ["all", "workspace"],
+          "default": "all",
+          "description": "List sessions from every project directory, or only this workspace and its git worktrees."
+        },
+        "claudeSessions.includeProgrammatic": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also list headless sessions started through the Agent SDK or claude -p."
+        },
+        "claudeSessions.archiveWritesTag": {
+          "type": "boolean",
+          "default": false,
+          "description": "When archiving, also write a \"frozen\" tag into the session transcript so other tools see it. Off keeps the viewer strictly read-only and stores the archive list in VS Code."
+        },
+        "claudeSessions.showThinking": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show thinking blocks expanded by default."
+        },
+        "claudeSessions.liveUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh the list and open transcripts when session files change on disk."
+        },
+        "claudeSessions.configDir": {
+          "type": "string",
+          "default": "",
+          "description": "Claude config directory. Empty uses $CLAUDE_CONFIG_DIR, then ~/.claude."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node esbuild.mjs && node --test test/*.test.mjs",
+    "package": "node esbuild.mjs && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.309"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}
