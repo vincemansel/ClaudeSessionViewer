@@ -128,3 +128,8 @@ Layout: `src/sessions.ts` reads sessions (SDK plus a fallback scan of `*.jsonl` 
 the SDK skips), `src/render.ts` turns messages into HTML (no `vscode` import, so it is
 testable), `src/tree.ts` is the sidebar, `src/viewer.ts` the transcript tab, and
 `src/extension.ts` wires commands, settings and the file watcher.
+
+## Release notes
+
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what changed in each version. From 0.6 on, the
+version number matches the pull request that shipped it.
