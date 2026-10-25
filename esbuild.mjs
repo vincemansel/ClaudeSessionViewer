@@ -21,7 +21,7 @@ const shared = {
 const builds = [
   { ...shared, entryPoints: ['src/extension.ts'], outfile: 'dist/extension.js' },
   // vscode-free modules, for the node:test suite.
-  { ...shared, entryPoints: ['src/sessions.ts', 'src/render.ts'], outdir: 'dist/test-lib' },
+  { ...shared, entryPoints: ['src/sessions.ts', 'src/render.ts', 'src/periods.ts'], outdir: 'dist/test-lib' },
 ];
 
 if (watch) {
