@@ -27,6 +27,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const view = vscode.window.createTreeView('claudeSessions.list', { treeDataProvider: tree, showCollapseAll: true, canSelectMany: true });
   const panels = new TranscriptPanels(() => ({ configDir: configDir(), showThinking: cfg().get<boolean>('showThinking', false) }));
   context.subscriptions.push(view);
+  // Version in the panel title while versions track PR numbers (0.<PR>); remove once it settles.
+  const [major, minor] = String(context.extension.packageJSON.version ?? '').split('.');
+  if (minor !== undefined) view.title = `Sessions v${major}.${minor}`;
 
   // Content search results by file, reused while a transcript's size and mtime are unchanged.
   const searchCache = new Map<string, { query: string; version: string; match: ContentMatch }>();
