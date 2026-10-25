@@ -14,6 +14,7 @@ Claude Code across several repos or worktrees, it works as is.
 ## At a glance
 
 - Every session from every project and worktree, in one sidebar
+- Group each worktree's sessions by the year, month, week or day they started
 - Search inside all transcripts to find the sessions that mention something
 - Search within one open transcript, with matches highlighted
 - Readable transcripts with Markdown replies and collapsible tool calls
@@ -50,7 +51,7 @@ npm run install-vsix
 ```
 
 Then reload the window. The panel title shows the version you're running, for example
-`Sessions v0.7`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
+`Sessions v0.8`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
 tells you its name, so you can install it from the Extensions view (**…** › **Install from
 VSIX…**).
 
@@ -71,6 +72,13 @@ never calls `query()`, so browsing costs nothing.
   and age; the tooltip has the full first prompt, session ID, path, dates and size.
 - **Find Session…** (search icon, or `Claude Sessions: Find Session…` in the command palette):
   a quick pick over every session, matching title, project, branch and first prompt.
+- **Group by date started** (calendar icon): pick **A**ll, **Y**ear, **M**onth, **W**eek or
+  **D**ay. All lists each worktree's sessions directly, as before. The others add a folder
+  level, Worktree › period › sessions, grouped by the date each session started, so every
+  session appears once. Each folder shows its count (`Oct 2026 · 12 sessions`), the newest
+  one starts open, and sessions inside are newest first. Weeks run Saturday 2 PM to Saturday
+  2 PM. The panel title shows the current grouping, for example `Sessions v0.8 · Month`, and
+  the choice is remembered.
 - **Filter** the tree by words; every word must match.
 - **Search Transcripts…** (fuzzy search icon): finds text anywhere inside every session,
   including prompts, replies, thinking, tool calls and their output, and subagent transcripts.
@@ -136,7 +144,7 @@ npm run watch   # rebuild on save; press F5 in VS Code to launch an Extension De
 `dist/extension.js`, so the `.vsix` carries no `node_modules` and none of the SDK's
 platform binaries (only `query()` needs those).
 
-Layout: `src/sessions.ts` reads sessions (SDK plus a fallback scan of `*.jsonl` for sessions
+Layout: `src/periods.ts` is the year/month/week/day math for grouping, `src/sessions.ts` reads sessions (SDK plus a fallback scan of `*.jsonl` for sessions
 the SDK skips), `src/render.ts` turns messages into HTML (no `vscode` import, so it is
 testable), `src/tree.ts` is the sidebar, `src/viewer.ts` the transcript tab, and
 `src/extension.ts` wires commands, settings and the file watcher.

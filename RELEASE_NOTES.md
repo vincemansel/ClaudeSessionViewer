@@ -5,6 +5,13 @@ version `0.<PR number>`, so 0.6 is [PR #6](https://github.com/vincemansel/Claude
 Newest first. The version also shows next to the **Sessions** panel title while this
 numbering is in use.
 
+## 0.8
+
+- **Group by date started:** a calendar button in the Sessions title bar picks All, Year,
+  Month, Week or Day. Year to Day add period folders under each worktree, grouped by the
+  date each session started, with a session count on each folder. Weeks run Saturday 2 PM
+  to Saturday 2 PM. The title shows the grouping (`Sessions v0.8 · Month`).
+
 ## 0.7
 
 - `npm run install-vsix` builds the current version and installs it over any installed

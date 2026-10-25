@@ -13,10 +13,12 @@ import {
   type ContentMatch,
   type SessionEntry,
 } from './sessions';
+import { GROUP_LABELS, type GroupBy } from './periods';
 import { relativeTime, SessionTree, type Node } from './tree';
 import { TranscriptPanels } from './viewer';
 
 const ARCHIVED_KEY = 'claudeSessions.archived';
+const GROUP_BY_KEY = 'claudeSessions.groupBy';
 
 export function activate(context: vscode.ExtensionContext): void {
   const cfg = () => vscode.workspace.getConfiguration('claudeSessions');
@@ -27,9 +29,15 @@ export function activate(context: vscode.ExtensionContext): void {
   const view = vscode.window.createTreeView('claudeSessions.list', { treeDataProvider: tree, showCollapseAll: true, canSelectMany: true });
   const panels = new TranscriptPanels(() => ({ configDir: configDir(), showThinking: cfg().get<boolean>('showThinking', false) }));
   context.subscriptions.push(view);
+  tree.groupBy = context.globalState.get<GroupBy>(GROUP_BY_KEY, 'all');
   // Version in the panel title while versions track PR numbers (0.<PR>); remove once it settles.
   const [major, minor] = String(context.extension.packageJSON.version ?? '').split('.');
-  if (minor !== undefined) view.title = `Sessions v${major}.${minor}`;
+  const updateTitle = () => {
+    const parts = [minor !== undefined ? `Sessions v${major}.${minor}` : 'Sessions'];
+    if (tree.groupBy !== 'all') parts.push(GROUP_LABELS[tree.groupBy]);
+    view.title = parts.join(' · ');
+  };
+  updateTitle();
 
   // Content search results by file, reused while a transcript's size and mtime are unchanged.
   const searchCache = new Map<string, { query: string; version: string; match: ContentMatch }>();
@@ -242,6 +250,28 @@ export function activate(context: vscode.ExtensionContext): void {
   reg('claudeSessions.toggleScope', async () => {
     const next = cfg().get<string>('scope', 'all') === 'all' ? 'workspace' : 'all';
     await cfg().update('scope', next, vscode.ConfigurationTarget.Global);
+  });
+  reg('claudeSessions.groupBy', async () => {
+    const hints: Record<GroupBy, string> = {
+      all: 'Each worktree lists its sessions, newest first',
+      year: 'Folders per calendar year',
+      month: 'Folders per month',
+      week: 'Folders per week, Saturday 2 PM to Saturday 2 PM',
+      day: 'Folders per day',
+    };
+    const pick = await vscode.window.showQuickPick(
+      (Object.keys(GROUP_LABELS) as GroupBy[]).map((g) => ({
+        label: `${g === tree.groupBy ? '$(check) ' : ''}${GROUP_LABELS[g][0]} · ${GROUP_LABELS[g]}`,
+        description: hints[g],
+        value: g,
+      })),
+      { placeHolder: 'Group each worktree’s sessions by the date they started' },
+    );
+    if (!pick) return;
+    tree.groupBy = pick.value;
+    await context.globalState.update(GROUP_BY_KEY, pick.value);
+    updateTitle();
+    tree.redraw();
   });
   reg('claudeSessions.toggleArchived', () => {
     tree.showArchived = !tree.showArchived;

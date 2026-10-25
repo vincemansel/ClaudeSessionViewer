@@ -1,8 +1,17 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { groupByPeriod, type GroupBy } from './periods';
 import { ARCHIVE_TAG, oneLine, type ContentMatch, type SessionEntry } from './sessions';
 
-export type Node = { kind: 'project'; key: string; label: string; sessions: SessionEntry[] } | { kind: 'session'; entry: SessionEntry };
+export type Node =
+  | { kind: 'project'; key: string; label: string; sessions: SessionEntry[] }
+  | { kind: 'period'; projectKey: string; key: string; label: string; sessions: SessionEntry[]; newest: boolean }
+  | { kind: 'session'; entry: SessionEntry };
+
+/** When a session started: its first message, or its file's mtime when that is unknown. */
+export function startedAt(e: SessionEntry): number {
+  return e.createdAt ?? e.lastModified;
+}
 
 export function relativeTime(ms: number, now = Date.now()): string {
   const s = Math.max(0, Math.round((now - ms) / 1000));
@@ -35,6 +44,8 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
   /** A search of transcript text: only sessions with a hit are shown. */
   content?: { query: string; matches: Map<string, ContentMatch> };
   showArchived = false;
+  /** All lists each project's sessions directly; the others add a period level by start date. */
+  groupBy: GroupBy = 'all';
   error?: string;
 
   constructor(private readonly archivedIds: () => Set<string>) {}
@@ -63,7 +74,18 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
   }
 
   getChildren(node?: Node): Node[] {
-    if (node?.kind === 'project') return node.sessions.map((entry) => ({ kind: 'session', entry }));
+    if (node?.kind === 'project') {
+      if (this.groupBy === 'all') return node.sessions.map((entry) => ({ kind: 'session', entry }));
+      return groupByPeriod(node.sessions, startedAt, this.groupBy).map((p, i) => ({
+        kind: 'period',
+        projectKey: node.key,
+        key: `${this.groupBy}:${p.key}`,
+        label: p.label,
+        sessions: p.items,
+        newest: i === 0,
+      }));
+    }
+    if (node?.kind === 'period') return node.sessions.map((entry) => ({ kind: 'session', entry }));
     if (node) return [];
     const groups = new Map<string, Node & { kind: 'project' }>();
     for (const entry of this.visible()) {
@@ -87,6 +109,16 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
       item.tooltip = node.key;
       item.iconPath = new vscode.ThemeIcon('folder');
       item.contextValue = 'project';
+      return item;
+    }
+    if (node.kind === 'period') {
+      // Only the newest period starts open, so a long history stays one screen tall.
+      const item = new vscode.TreeItem(node.label, node.newest ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed);
+      item.id = `period:${node.projectKey}:${node.key}`;
+      const n = node.sessions.length;
+      item.description = `${n} session${n === 1 ? '' : 's'}`;
+      item.iconPath = new vscode.ThemeIcon('calendar');
+      item.contextValue = 'period';
       return item;
     }
     const e = node.entry;
