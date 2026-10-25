@@ -2,7 +2,7 @@
   "name": "claude-session-viewer",
   "displayName": "Claude Session Viewer",
   "description": "Browse Claude Code session transcripts across every project and worktree, and delete the ones you no longer need.",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "vincemansel",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/vincemansel/ClaudeSessionViewer" },
@@ -67,15 +67,15 @@
         { "command": "claudeSessions.toggleArchived", "when": "view == claudeSessions.list", "group": "1_view@2" }
       ],
       "view/item/context": [
-        { "command": "claudeSessions.open", "when": "viewItem =~ /^session/", "group": "1_open@1" },
-        { "command": "claudeSessions.openRaw", "when": "viewItem =~ /^session/", "group": "1_open@2" },
-        { "command": "claudeSessions.reveal", "when": "viewItem =~ /^session/", "group": "1_open@3" },
-        { "command": "claudeSessions.openInTokenReporter", "when": "viewItem =~ /^session/ && claudeSessions.hasTokenReporter", "group": "1_open@4" },
-        { "command": "claudeSessions.copyId", "when": "viewItem =~ /^session/", "group": "2_copy@1" },
-        { "command": "claudeSessions.copyResume", "when": "viewItem =~ /^session/", "group": "2_copy@2" },
-        { "command": "claudeSessions.archive", "when": "viewItem == session", "group": "3_archive@1" },
-        { "command": "claudeSessions.unarchive", "when": "viewItem == session-archived", "group": "3_archive@1" },
-        { "command": "claudeSessions.delete", "when": "viewItem =~ /^session/", "group": "4_delete@1" }
+        { "command": "claudeSessions.open", "when": "view == claudeSessions.list && viewItem =~ /^session/", "group": "1_open@1" },
+        { "command": "claudeSessions.openRaw", "when": "view == claudeSessions.list && viewItem =~ /^session/", "group": "1_open@2" },
+        { "command": "claudeSessions.reveal", "when": "view == claudeSessions.list && viewItem =~ /^session/", "group": "1_open@3" },
+        { "command": "claudeSessions.openInTokenReporter", "when": "view == claudeSessions.list && viewItem =~ /^session/ && claudeSessions.hasTokenReporter", "group": "1_open@4" },
+        { "command": "claudeSessions.copyId", "when": "view == claudeSessions.list && viewItem =~ /^session/", "group": "2_copy@1" },
+        { "command": "claudeSessions.copyResume", "when": "view == claudeSessions.list && viewItem =~ /^session/", "group": "2_copy@2" },
+        { "command": "claudeSessions.archive", "when": "view == claudeSessions.list && viewItem == session", "group": "3_archive@1" },
+        { "command": "claudeSessions.unarchive", "when": "view == claudeSessions.list && viewItem == session-archived", "group": "3_archive@1" },
+        { "command": "claudeSessions.delete", "when": "view == claudeSessions.list && viewItem =~ /^session/", "group": "4_delete@1" }
       ],
       "commandPalette": [
         { "command": "claudeSessions.open", "when": "false" },

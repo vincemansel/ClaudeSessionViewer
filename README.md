@@ -52,7 +52,7 @@ npm run install-vsix
 ```
 
 Then reload the window. The panel title shows the version you're running, for example
-`Sessions v0.9`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
+`Sessions v0.10`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
 tells you its name, so you can install it from the Extensions view (**…** › **Install from
 VSIX…**).
 

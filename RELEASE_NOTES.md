@@ -5,6 +5,13 @@ version `0.<PR number>`, so 0.6 is [PR #6](https://github.com/vincemansel/Claude
 Newest first. The version also shows next to the **Sessions** panel title while this
 numbering is in use.
 
+## 0.10
+
+- **Fix:** Session Viewer's right-click items now appear only in its own Sessions sidebar.
+  Before, they also showed on Claude Token Reporter's session rows, which use the same
+  `session` row type, so picking one there gave an error. Token Reporter makes the
+  matching fix for its own items.
+
 ## 0.9
 
 - **Cross-link with Claude Token Reporter 0.15:** right-click a session › *Open in Token
