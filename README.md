@@ -32,17 +32,27 @@ the VS Code command palette if `code` isn't found.
 git clone https://github.com/vincemansel/ClaudeSessionViewer.git
 cd ClaudeSessionViewer
 npm install
-npm run package                                      # builds claude-session-viewer-<version>.vsix
-code --install-extension claude-session-viewer-*.vsix
+npm run install-vsix                                 # builds this version and installs it
 ```
 
-Then, in VS Code, open the command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and run
+`install-vsix` removes any old `.vsix` builds, packages the current version, and installs it
+over whatever version VS Code has, so there's nothing to uninstall first. Then, in VS Code, open the command palette (`Cmd+Shift+P` or `Ctrl+Shift+P`) and run
 **Developer: Reload Window**. Click the **Claude Sessions** icon in the activity bar to see
 your sessions. They're read from `~/.claude/projects/`. If yours are somewhere else, set
 `claudeSessions.configDir`.
 
-To update later, run `git pull`, then repeat `npm install`, `npm run package`, the
-`code --install-extension` line with `--force` added, and reload the window.
+To update later:
+
+```bash
+git pull
+npm install
+npm run install-vsix
+```
+
+Then reload the window. The panel title shows the version you're running, for example
+`Sessions v0.7`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
+tells you its name, so you can install it from the Extensions view (**…** › **Install from
+VSIX…**).
 
 ## Overview
 
@@ -108,8 +118,10 @@ listed.
 ```bash
 npm install
 npm run package                     # builds claude-session-viewer-<version>.vsix
-code --install-extension claude-session-viewer-*.vsix
+code --install-extension claude-session-viewer-<version>.vsix --force
 ```
+
+`npm run install-vsix` does both steps and removes old builds first.
 
 ## Develop
 
