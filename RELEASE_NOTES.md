@@ -5,6 +5,13 @@ version `0.<PR number>`, so 0.6 is [PR #6](https://github.com/vincemansel/Claude
 Newest first. The version also shows next to the **Sessions** panel title while this
 numbering is in use.
 
+## 0.7
+
+- `npm run install-vsix` builds the current version and installs it over any installed
+  version. It removes old `.vsix` builds first, so `code --install-extension` never picks up
+  a stale one, and nothing needs uninstalling by hand. The README's install and update steps
+  use it.
+
 ## 0.6
 
 - Versions now follow PR numbers, starting here.
