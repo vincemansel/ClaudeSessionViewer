@@ -5,6 +5,13 @@ version `0.<PR number>`, so 0.6 is [PR #6](https://github.com/vincemansel/Claude
 Newest first. The version also shows next to the **Sessions** panel title while this
 numbering is in use.
 
+## 0.9
+
+- **Cross-link with Claude Token Reporter 0.15:** right-click a session › *Open in Token
+  Reporter* opens its token report. The item shows only when Token Reporter is installed.
+- New command `claudeSessions.openSession` (`{ sessionId, cwd? }`) opens a session's
+  transcript and selects it in the sidebar. Token Reporter's *Open in Session Viewer* uses it.
+
 ## 0.8
 
 - **Group by date started:** a calendar button in the Sessions title bar picks All, Year,

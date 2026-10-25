@@ -20,6 +20,7 @@ Claude Code across several repos or worktrees, it works as is.
 - Readable transcripts with Markdown replies and collapsible tool calls
 - Live updates while a session is running
 - Copy a ready-to-paste resume command
+- Jump between a session and its token report in Claude Token Reporter
 - Archive or delete sessions you're done with
 - Never calls the model, so browsing costs nothing
 
@@ -51,7 +52,7 @@ npm run install-vsix
 ```
 
 Then reload the window. The panel title shows the version you're running, for example
-`Sessions v0.8`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
+`Sessions v0.9`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
 tells you its name, so you can install it from the Extensions view (**…** › **Install from
 VSIX…**).
 
@@ -98,6 +99,11 @@ never calls `query()`, so browsing costs nothing.
   session can be followed from another window.
 - **Right-click a session** to open the raw JSONL, reveal it in Finder, copy the session ID,
   or copy a ready-to-paste `cd … && claude --resume <id>` command.
+- **Open in Token Reporter**: when [Claude Token Reporter](https://github.com/vincemansel/ClaudeTokenReporter)
+  0.15 or later is installed, right-click a session to open its token report. Token Reporter
+  links back the same way: its *Open in Session Viewer* opens the transcript here and selects
+  the session in the sidebar. Other extensions can do the same by running
+  `claudeSessions.openSession` with `{ sessionId }`.
 - **Archive** hides a session from the list (toggle *Show or Hide Archived* to see it again).
 - **Delete** removes a session from disk: right-click → *Delete…*, or select one or more rows
   and press `Delete` (`Cmd+Backspace` on macOS). A confirmation lists the files first: the
