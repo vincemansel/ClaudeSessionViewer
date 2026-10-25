@@ -101,6 +101,19 @@ export class SessionTree implements vscode.TreeDataProvider<Node> {
     return [...groups.values()];
   }
 
+  /** Lets the view reveal a session: its parent is its project, or its period folder. */
+  getParent(node: Node): Node | undefined {
+    if (node.kind === 'project') return undefined;
+    const projects = this.getChildren();
+    if (node.kind === 'period') return projects.find((p) => p.kind === 'project' && p.key === node.projectKey);
+    for (const p of projects) {
+      if (p.kind !== 'project' || !p.sessions.some((e) => e.id === node.entry.id)) continue;
+      if (this.groupBy === 'all') return p;
+      return this.getChildren(p).find((c) => c.kind === 'period' && c.sessions.some((e) => e.id === node.entry.id));
+    }
+    return undefined;
+  }
+
   getTreeItem(node: Node): vscode.TreeItem {
     if (node.kind === 'project') {
       const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Expanded);

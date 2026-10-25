@@ -20,6 +20,11 @@ import { TranscriptPanels } from './viewer';
 const ARCHIVED_KEY = 'claudeSessions.archived';
 const GROUP_BY_KEY = 'claudeSessions.groupBy';
 
+// Cross-link with Claude Token Reporter. Each extension calls a command the other registers,
+// with { sessionId, cwd? }, and shows its menu item only when the other is installed.
+const TOKEN_REPORTER_ID = 'vincemansel.claude-token-reporter';
+const TOKEN_REPORTER_OPEN = 'claudeTokenReporter.openSession';
+
 export function activate(context: vscode.ExtensionContext): void {
   const cfg = () => vscode.workspace.getConfiguration('claudeSessions');
   const configDir = () => cfg().get<string>('configDir') || undefined;
@@ -198,6 +203,43 @@ export function activate(context: vscode.ExtensionContext): void {
     // Opened from a content search: search the transcript for the same text.
     if (e) return panels.open(e, tree.content && tree.hits(e) > 0 ? tree.content.query : undefined);
   });
+  // Called by Claude Token Reporter (and usable by any extension): open a session by id and
+  // select it in the sidebar.
+  reg('claudeSessions.openSession', async (arg?: { sessionId?: string; cwd?: string } | string) => {
+    const id = typeof arg === 'string' ? arg : arg?.sessionId;
+    if (!id) return;
+    let e = tree.sessions.find((s) => s.id === id);
+    if (!e) {
+      await refresh();
+      e = tree.sessions.find((s) => s.id === id);
+    }
+    if (!e) {
+      void vscode.window.showInformationMessage(`Claude Sessions: no session ${id} under ${projectsRoot(configDir())}.`);
+      return;
+    }
+    await panels.open(e);
+    // Not shown when the filter, a search or archiving hides it; the transcript still opens.
+    if (tree.visible().some((s) => s.id === id)) {
+      try {
+        await view.reveal({ kind: 'session', entry: e }, { select: true, focus: false, expand: true });
+      } catch {
+        // The sidebar isn't visible yet.
+      }
+    }
+  });
+  reg('claudeSessions.openInTokenReporter', async (arg?: Node) => {
+    const e = entryOf(arg);
+    if (!e) return;
+    try {
+      await vscode.commands.executeCommand(TOKEN_REPORTER_OPEN, { sessionId: e.id, cwd: e.cwd });
+    } catch {
+      void vscode.window.showWarningMessage('Install Claude Token Reporter 0.15 or later to open sessions in it.');
+    }
+  });
+  const updateTokenReporter = () =>
+    void vscode.commands.executeCommand('setContext', 'claudeSessions.hasTokenReporter', !!vscode.extensions.getExtension(TOKEN_REPORTER_ID));
+  updateTokenReporter();
+  context.subscriptions.push(vscode.extensions.onDidChange(updateTokenReporter));
   reg('claudeSessions.quickOpen', async () => {
     if (tree.sessions.length === 0) await refresh();
     const pick = await vscode.window.showQuickPick(
