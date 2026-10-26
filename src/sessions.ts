@@ -37,6 +37,22 @@ export interface LoadOptions {
   /** Limit to this directory and its git worktrees. */
   workspaceDir?: string;
   includeProgrammatic: boolean;
+  /** Leave out the one-message sessions Claude Token Reporter runs to read plan usage. */
+  hideTokenReporterPings?: boolean;
+}
+
+/** Claude Token Reporter 0.21+ runs its plan-usage readings as `claude` sessions in this folder. */
+export function tokenReporterPingDir(): string {
+  return path.join(os.homedir(), '.claude-tokens-ping');
+}
+
+export function isTokenReporterPing(e: Pick<SessionEntry, 'cwd' | 'projectKey'>): boolean {
+  if (e.cwd) {
+    const cwd = e.cwd.startsWith('~') ? path.join(os.homedir(), e.cwd.slice(1)) : e.cwd;
+    return path.resolve(cwd) === tokenReporterPingDir();
+  }
+  // No cwd recorded: fall back to the projects/ folder name Claude Code derives from it.
+  return e.projectKey.endsWith('-claude-tokens-ping');
 }
 
 export function projectsRoot(configDir?: string): string {
@@ -99,7 +115,9 @@ export async function loadSessions(opts: LoadOptions): Promise<SessionEntry[]> {
     }
   }
 
-  return [...byId.values()].sort((a, b) => b.lastModified - a.lastModified);
+  let out = [...byId.values()];
+  if (opts.hideTokenReporterPings) out = out.filter((e) => !isTokenReporterPing(e));
+  return out.sort((a, b) => b.lastModified - a.lastModified);
 }
 
 interface TranscriptFile {

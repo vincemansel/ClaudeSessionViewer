@@ -2,7 +2,7 @@
   "name": "claude-session-viewer",
   "displayName": "Claude Session Viewer",
   "description": "Browse Claude Code session transcripts across every project and worktree, and delete the ones you no longer need.",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "publisher": "vincemansel",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/vincemansel/ClaudeSessionViewer" },
@@ -103,6 +103,11 @@
           "type": "boolean",
           "default": false,
           "description": "Also list headless sessions started through the Agent SDK or claude -p."
+        },
+        "claudeSessions.hideTokenReporterPings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide the one-message sessions Claude Token Reporter 0.21+ runs in ~/.claude-tokens-ping to read plan usage."
         },
         "claudeSessions.archiveWritesTag": {
           "type": "boolean",

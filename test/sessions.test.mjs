@@ -170,3 +170,22 @@ test('searches subagent transcripts too', async () => {
   assert.equal((await searchSessionContent(a, '"quoted"')).hits, 1);
   fs.rmSync(path.join(p, A), { recursive: true, force: true });
 });
+
+test('hides Claude Token Reporter ping sessions unless asked to show them', async () => {
+  const P = '44444444-4444-4444-8444-444444444444';
+  const pingDir = path.join(os.homedir(), '.claude-tokens-ping');
+  const p = path.join(dir, 'projects', pingDir.replace(/[^A-Za-z0-9]/g, '-'));
+  fs.mkdirSync(p, { recursive: true });
+  fs.writeFileSync(path.join(p, `${P}.jsonl`), transcript(P, pingDir, 'ping'));
+  try {
+    for (const includeProgrammatic of [false, true]) {
+      const hidden = await loadSessions({ includeProgrammatic, hideTokenReporterPings: true });
+      assert.ok(!hidden.some((s) => s.id === P));
+      assert.ok(hidden.some((s) => s.id === A));
+      const shown = await loadSessions({ includeProgrammatic, hideTokenReporterPings: false });
+      assert.ok(shown.some((s) => s.id === P));
+    }
+  } finally {
+    fs.rmSync(p, { recursive: true, force: true });
+  }
+});

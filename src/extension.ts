@@ -80,6 +80,7 @@ export function activate(context: vscode.ExtensionContext): void {
               configDir: configDir(),
               workspaceDir: scope === 'workspace' ? ws : undefined,
               includeProgrammatic: cfg().get<boolean>('includeProgrammatic', false),
+              hideTokenReporterPings: cfg().get<boolean>('hideTokenReporterPings', true),
             }),
           );
         } catch (err) {
