@@ -52,7 +52,7 @@ npm run install-vsix
 ```
 
 Then reload the window. The panel title shows the version you're running, for example
-`Sessions v0.10`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
+`Sessions v0.11`. If `code` isn't on your PATH, `install-vsix` still builds the `.vsix` and
 tells you its name, so you can install it from the Extensions view (**…** › **Install from
 VSIX…**).
 
@@ -122,6 +122,7 @@ listed.
 |---|---|---|
 | `claudeSessions.scope` | `all` | `all` projects, or `workspace` (this folder and its worktrees). |
 | `claudeSessions.includeProgrammatic` | `false` | Also list headless sessions (Agent SDK, `claude -p`). |
+| `claudeSessions.hideTokenReporterPings` | `true` | Hide the one-message sessions Claude Token Reporter 0.21+ runs in `~/.claude-tokens-ping` to read plan usage, from the list, search and counts. |
 | `claudeSessions.archiveWritesTag` | `false` | Archiving also writes a `frozen` tag into the transcript via `tagSession()`, so other tools see it. Off keeps the extension strictly read-only; the archive list lives in VS Code's state. |
 | `claudeSessions.showThinking` | `false` | Expand thinking blocks by default. |
 | `claudeSessions.liveUpdate` | `true` | Watch the projects folder and refresh on change. |

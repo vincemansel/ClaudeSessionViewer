@@ -5,6 +5,13 @@ version `0.<PR number>`, so 0.6 is [PR #6](https://github.com/vincemansel/Claude
 Newest first. The version also shows next to the **Sessions** panel title while this
 numbering is in use.
 
+## 0.11
+
+- **Hide Token Reporter pings:** Claude Token Reporter 0.21+ reads plan usage by running a
+  one-message `claude` session in `~/.claude-tokens-ping`. Those sessions are now left out
+  of the session tree, search, Find Session and every count. The new setting
+  `claudeSessions.hideTokenReporterPings` (default on) shows them again.
+
 ## 0.10
 
 - **Fix:** Session Viewer's right-click items now appear only in its own Sessions sidebar.
